@@ -9,19 +9,23 @@ ifeq ($(TARGET_KERNEL_SOURCE),)
      TARGET_KERNEL_SOURCE := kernel/$(TARGET_KERNEL)
 endif
 
-DTC := $(HOST_OUT_EXECUTABLES)/dtc$(HOST_EXECUTABLE_SUFFIX)
-UFDT_APPLY_OVERLAY := $(HOST_OUT_EXECUTABLES)/ufdt_apply_overlay$(HOST_EXECUTABLE_SUFFIX)
 
 SOURCE_ROOT := $(shell pwd)
 
+TARGET_USES_ARM64_DT_OVERLAY := $(shell grep "CONFIG_BUILD_ARM64_DT_OVERLAY=y" $(TARGET_KERNEL_SOURCE)/arch/arm64/configs/$(KERNEL_DEFCONFIG))
+
+ifeq ($(TARGET_USES_ARM64_DT_OVERLAY),)
+DTC := $(HOST_OUT_EXECUTABLES)/dtc$(HOST_EXECUTABLE_SUFFIX)
+UFDT_APPLY_OVERLAY := $(HOST_OUT_EXECUTABLES)/ufdt_apply_overlay$(HOST_EXECUTABLE_SUFFIX)
+
 TARGET_KERNEL_MAKE_ENV := DTC_EXT=$(SOURCE_ROOT)/$(DTC)
 TARGET_KERNEL_MAKE_ENV += DTC_OVERLAY_TEST_EXT=$(SOURCE_ROOT)/$(UFDT_APPLY_OVERLAY)
-TARGET_KERNEL_MAKE_ENV += CONFIG_BUILD_ARM64_DT_OVERLAY=y
+endif
 TARGET_KERNEL_MAKE_ENV += HOSTCC=$(SOURCE_ROOT)/prebuilts/gcc/linux-x86/host/x86_64-linux-glibc2.17-4.8/bin/x86_64-linux-gcc
 TARGET_KERNEL_MAKE_ENV += HOSTAR=$(SOURCE_ROOT)/prebuilts/gcc/linux-x86/host/x86_64-linux-glibc2.17-4.8/bin/x86_64-linux-ar
 TARGET_KERNEL_MAKE_ENV += HOSTLD=$(SOURCE_ROOT)/prebuilts/gcc/linux-x86/host/x86_64-linux-glibc2.17-4.8/bin/x86_64-linux-ld
-TARGET_KERNEL_MAKE_CFLAGS = "-I$(SOURCE_ROOT)/$(TARGET_KERNEL_SOURCE)/include/uapi -I/usr/include -I/usr/include/x86_64-linux-gnu -L/usr/lib -L/usr/lib/x86_64-linux-gnu"
-TARGET_KERNEL_MAKE_LDFLAGS = "-L/usr/lib -L/usr/lib/x86_64-linux-gnu"
+TARGET_KERNEL_MAKE_CFLAGS = "-I$(SOURCE_ROOT)/$(TARGET_KERNEL_SOURCE)/include/uapi -I/usr/include -I/usr/include/x86_64-linux-gnu -L/usr/lib64 -L/usr/lib64/x86_64-linux-gnu"
+TARGET_KERNEL_MAKE_LDFLAGS = "-L/usr/lib64 -L/usr/lib64/x86_64-linux-gnu"
 
 KERNEL_LLVM_BIN := $(lastword $(sort $(wildcard $(SOURCE_ROOT)/$(LLVM_PREBUILTS_BASE)/$(BUILD_OS)-x86/clang-4*)))/bin/clang
 
@@ -89,7 +93,7 @@ endif
 endif
 
 BUILD_ROOT_LOC := ../../..
-KERNEL_OUT := $(TARGET_OUT_INTERMEDIATES)/kernel/$(TARGET_KERNEL)
+KERNEL_OUT := $(TARGET_OUT_INTERMEDIATES)/$(TARGET_KERNEL_SOURCE)
 KERNEL_SYMLINK := $(TARGET_OUT_INTERMEDIATES)/KERNEL_OBJ
 KERNEL_USR := $(KERNEL_SYMLINK)/usr
 
@@ -124,7 +128,6 @@ KERNEL_MODULES_OUT ?= $(PRODUCT_OUT)/$(KERNEL_MODULES_INSTALL)/lib/modules
 TARGET_PREBUILT_KERNEL := $(TARGET_PREBUILT_INT_KERNEL)
 
 endif
-endif
 
 # Add RTIC DTB to dtb.img if RTIC MPGen is enabled.
 # Note: unfortunately we can't define RTIC DTS + DTB rule here as the
@@ -138,7 +141,6 @@ RTIC_DTB := $(KERNEL_SYMLINK)/rtic_mp.dtb
 endif
 
 # Android Kernel make rules
-
 $(KERNEL_HEADERS_INSTALL): $(KERNEL_OUT) $(DTC) $(UFDT_APPLY_OVERLAY)
 	KERNEL_DIR=$(TARGET_KERNEL_SOURCE) \
 	DEFCONFIG=$(KERNEL_DEFCONFIG) \
@@ -160,7 +162,7 @@ $(KERNEL_OUT):
 
 $(KERNEL_USR): $(KERNEL_HEADERS_INSTALL)
 	rm -rf $(KERNEL_SYMLINK)
-	ln -s kernel/$(TARGET_KERNEL) $(KERNEL_SYMLINK)
+	ln -s $(TARGET_KERNEL_SOURCE) $(KERNEL_SYMLINK)
 
 $(TARGET_PREBUILT_KERNEL): $(KERNEL_OUT) $(DTC) $(KERNEL_USR)
 	KERNEL_DIR=$(TARGET_KERNEL_SOURCE) \
@@ -190,3 +192,5 @@ $(RTIC_DTB): $(INSTALLED_KERNEL_TARGET)
 # Creating a dtb.img once the kernel is compiled if TARGET_KERNEL_APPEND_DTB is set to be false
 $(INSTALLED_DTBIMAGE_TARGET): $(INSTALLED_KERNEL_TARGET) $(RTIC_DTB)
 	cat $(KERNEL_OUT)/arch/$(KERNEL_ARCH)/boot/dts/vendor/qcom/*.dtb $(RTIC_DTB) > $@
+
+endif

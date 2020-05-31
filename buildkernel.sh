@@ -80,6 +80,7 @@ build_kernel()
 	echo "Building kernel"
 	set -x
 	(cd ${OUT_DIR} && \
+	rm -rf ${IMAGE_FILE_PATH}/dts && \
 	make ARCH=${ARCH} CROSS_COMPILE=${CROSS_COMPILE} HOSTCFLAGS="${TARGET_INCLUDES}" HOSTLDFLAGS="${TARGET_LINCLUDES}" O=${OUT_DIR} ${CC_ARG} ${MAKE_ARGS} -j$(nproc))
 	set +x
 }
@@ -164,11 +165,22 @@ copy_all_to_prebuilt()
 	#copy dtbo images to prebuilt
 	echo "============="
 	echo "Copying target dtb/dtbo files to prebuilt"
-	if [ ! -e ${PREBUILT_OUT}/${IMAGE_FILE_PATH}/dts/vendor/qcom ]; then
-		mkdir -p ${PREBUILT_OUT}/${IMAGE_FILE_PATH}/dts/vendor/qcom
+	#first try to copy SoMC dtb/dtbo images to prebuilt if they found
+	if [ -e ${OUT_DIR}/${IMAGE_FILE_PATH}/dts/somc ]; then
+		if [ ! -e ${PREBUILT_OUT}/${IMAGE_FILE_PATH}/dts/somc ]; then
+			mkdir -p ${PREBUILT_OUT}/${IMAGE_FILE_PATH}/dts/somc
+		fi
+		cp -p -r ${OUT_DIR}/${IMAGE_FILE_PATH}/dts/somc/*.dtb ${PREBUILT_OUT}/${IMAGE_FILE_PATH}/dts/somc/
+		if [ -f ${OUT_DIR}/${IMAGE_FILE_PATH}/dts/somc/*.dtbo ]; then
+			cp -p -r ${OUT_DIR}/${IMAGE_FILE_PATH}/dts/somc/*.dtbo ${PREBUILT_OUT}/${IMAGE_FILE_PATH}/dts/somc/
+		fi
+    else
+		if [ ! -e ${PREBUILT_OUT}/${IMAGE_FILE_PATH}/dts/vendor/qcom ]; then
+			mkdir -p ${PREBUILT_OUT}/${IMAGE_FILE_PATH}/dts/vendor/qcom
+		fi
+		cp -p -r ${OUT_DIR}/${IMAGE_FILE_PATH}/dts/vendor/qcom/*.dtb ${PREBUILT_OUT}/${IMAGE_FILE_PATH}/dts/vendor/qcom/
+		cp -p -r ${OUT_DIR}/${IMAGE_FILE_PATH}/dts/vendor/qcom/*.dtbo ${PREBUILT_OUT}/${IMAGE_FILE_PATH}/dts/vendor/qcom/
 	fi
-	cp -p -r ${OUT_DIR}/${IMAGE_FILE_PATH}/dts/vendor/qcom/*.dtb ${PREBUILT_OUT}/${IMAGE_FILE_PATH}/dts/vendor/qcom/
-	cp -p -r ${OUT_DIR}/${IMAGE_FILE_PATH}/dts/vendor/qcom/*.dtbo ${PREBUILT_OUT}/${IMAGE_FILE_PATH}/dts/vendor/qcom/
 
 	#copy arch generated headers
 	echo "============="
@@ -234,11 +246,22 @@ copy_from_prebuilt()
 	#copy dtbo images from prebuilt
 	echo "============="
 	echo "Copying dtb/dtbo files from prebuilt"
-	if [ ! -e ${OUT_DIR}/${IMAGE_FILE_PATH}/dts/vendor/qcom ]; then
-		mkdir -p ${OUT_DIR}/${IMAGE_FILE_PATH}/dts/vendor/qcom
+	#first try to copy SoMC dtb/dtbo images from prebuilt if they found
+	if [ -e ${OUT_DIR}/${IMAGE_FILE_PATH}/dts/somc ]; then
+		if [ ! -e ${OUT_DIR}/${IMAGE_FILE_PATH}/dts/somc ]; then
+			mkdir -p ${OUT_DIR}/${IMAGE_FILE_PATH}/dts/somc
+		fi
+		cp -p -r ${PREBUILT_OUT}/${IMAGE_FILE_PATH}/dts/somc/*.dtb ${OUT_DIR}/${IMAGE_FILE_PATH}/dts/somc/
+		if [ -f ${PREBUILT_OUT}/${IMAGE_FILE_PATH}/dts/somc/*.dtbo ]; then
+			cp -p -r ${PREBUILT_OUT}/${IMAGE_FILE_PATH}/dts/somc/*.dtbo ${OUT_DIR}/${IMAGE_FILE_PATH}/dts/somc/
+		fi
+    else
+		if [ ! -e ${OUT_DIR}/${IMAGE_FILE_PATH}/dts/vendor/qcom ]; then
+			mkdir -p ${OUT_DIR}/${IMAGE_FILE_PATH}/dts/vendor/qcom
+		fi
+		cp -p -r ${PREBUILT_OUT}/${IMAGE_FILE_PATH}/dts/vendor/qcom/*.dtb ${OUT_DIR}/${IMAGE_FILE_PATH}/dts/vendor/qcom/
+		cp -p -r ${PREBUILT_OUT}/${IMAGE_FILE_PATH}/dts/vendor/qcom/*.dtbo ${OUT_DIR}/${IMAGE_FILE_PATH}/dts/vendor/qcom/
 	fi
-	cp -p -r ${PREBUILT_OUT}/${IMAGE_FILE_PATH}/dts/vendor/qcom/*.dtb ${OUT_DIR}/${IMAGE_FILE_PATH}/dts/vendor/qcom/
-	cp -p -r ${PREBUILT_OUT}/${IMAGE_FILE_PATH}/dts/vendor/qcom/*.dtbo ${OUT_DIR}/${IMAGE_FILE_PATH}/dts/vendor/qcom/
 
 	#copy arch generated headers, and kernel generated headers
 	echo "============"
